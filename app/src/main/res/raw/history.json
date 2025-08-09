@@ -1,0 +1,94 @@
+{
+  "histories": [
+    {
+      "id": 1,
+      "name": "Product 1",
+      "company": "Company A",
+      "photoUrl": "url1",
+      "barcode": "123456789",
+      "user_id": 5,
+      "dateAdded": "2023-01-01"
+    },
+    {
+      "id": 2,
+      "name": "Product 2",
+      "company": "Company B",
+      "photoUrl": "url2",
+      "barcode": "987654321",
+      "user_id": 5,
+      "dateAdded": "2023-01-02"
+    },
+    {
+      "id": 3,
+      "name": "Product 3",
+      "company": "Company C",
+      "photoUrl": "url3",
+      "barcode": "111222333",
+      "user_id": 5,
+      "dateAdded": "2023-01-03"
+    },
+    {
+      "id": 4,
+      "name": "Product 4",
+      "company": "Company D",
+      "photoUrl": "url4",
+      "barcode": "444555666",
+      "user_id": 5,
+      "dateAdded": "2023-01-04"
+    },
+    {
+      "id": 5,
+      "name": "Product 5",
+      "company": "Company E",
+      "photoUrl": "url5",
+      "barcode": "777888999",
+      "user_id": 5,
+      "dateAdded": "2023-01-05"
+    },
+    {
+      "id": 6,
+      "name": "Product 6",
+      "company": "Company F",
+      "photoUrl": "url6",
+      "barcode": "123123123",
+      "user_id": 5,
+      "dateAdded": "2023-01-06"
+    },
+    {
+      "id": 7,
+      "name": "Product 7",
+      "company": "Company G",
+      "photoUrl": "url7",
+      "barcode": "456456456",
+      "user_id": 5,
+      "dateAdded": "2023-01-07"
+    },
+    {
+      "id": 8,
+      "name": "Product 8",
+      "company": "Company H",
+      "photoUrl": "url8",
+      "barcode": "789789789",
+      "user_id": 5,
+      "dateAdded": "2023-01-08"
+    },
+    {
+      "id": 9,
+      "name": "Product 9",
+      "company": "Company I",
+      "photoUrl": "url9",
+      "barcode": "999888777",
+      "user_id": 5,
+      "dateAdded": "2023-01-09"
+    },
+    {
+      "id": 10,
+      "name": "Product 10",
+      "company": "Company J",
+      "photoUrl": "url10",
+      "barcode": "555444333",
+      "user_id": 5,
+      "dateAdded": "2023-01-10"
+    }
+  ]
+}
