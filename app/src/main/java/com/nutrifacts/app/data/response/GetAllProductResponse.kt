@@ -5,8 +5,8 @@ import com.google.gson.annotations.SerializedName
 
 data class GetAllProductResponse(
 
-	@field:SerializedName("product")
-	val product: List<GetAllProductResponseItem> = emptyList(),
+	@field:SerializedName("products") // Perbaiki di sini
+	val products: List<GetAllProductResponseItem> = emptyList(),
 
 	@field:SerializedName("success")
 	val success: Boolean? = null,

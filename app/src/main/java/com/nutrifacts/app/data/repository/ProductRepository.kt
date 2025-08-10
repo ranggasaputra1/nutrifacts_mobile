@@ -27,7 +27,7 @@ class ProductRepository private constructor(
         emit(Result.Loading)
         try {
             val response = apiService.getAllProducts()
-            emit(Result.Success(response.product))
+            emit(Result.Success(response.products)) // Perbaikan di sini
         } catch (e: HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
             val errorResponse = Gson().fromJson(errorBody, ErrorResponse::class.java)
@@ -40,7 +40,7 @@ class ProductRepository private constructor(
         try {
             val response = apiService.getProductByName(name)
             Log.d("repository", "$response")
-            emit(Result.Success(response.product))
+            emit(Result.Success(response.products)) // Perbaikan di sini
         } catch (e: HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
             val errorResponse = Gson().fromJson(errorBody, ErrorResponse::class.java)

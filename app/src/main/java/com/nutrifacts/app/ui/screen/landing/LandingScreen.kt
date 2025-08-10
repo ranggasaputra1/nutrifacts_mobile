@@ -42,7 +42,7 @@ fun LandingScreen(modifier: Modifier = Modifier, navigateToLogin: () -> Unit) {
         Spacer(modifier = modifier.height(16.dp))
         Text(
             stringResource(R.string.landing_welcome),
-            textAlign = TextAlign.Start,
+            textAlign = TextAlign.Center, // Perubahan ada di sini
             style = MaterialTheme.typography.headlineLarge,
             modifier = modifier.width(300.dp)
         )

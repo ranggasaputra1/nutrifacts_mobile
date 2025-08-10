@@ -46,7 +46,6 @@ import com.nutrifacts.app.ui.screen.history.HistoryScreen
 import com.nutrifacts.app.ui.screen.home.HomeScreen
 import com.nutrifacts.app.ui.screen.landing.LandingScreen
 import com.nutrifacts.app.ui.screen.login.LoginScreen
-import com.nutrifacts.app.ui.screen.news.NewsScreen
 import com.nutrifacts.app.ui.screen.notifications.NotificationsScreen
 import com.nutrifacts.app.ui.screen.profile.ProfileScreen
 import com.nutrifacts.app.ui.screen.saved.SavedScreen
@@ -99,11 +98,7 @@ fun NutrifactsApp(
                     navigateToLogin = { navController.navigate(Screen.Login.route) })
             }
             composable(Screen.Home.route) {
-                HomeScreen(navigateToNews = { newsId ->
-                    navController.navigate(
-                        Screen.News.createRoute(newsId)
-                    )
-                })
+                HomeScreen() // Diubah: Hapus parameter navigateToNews
             }
             composable(Screen.Search.route) {
                 SearchScreen(navigateToDetail = { barcode ->
@@ -125,13 +120,7 @@ fun NutrifactsApp(
             composable(Screen.Scanner.route) {
                 ScannerActivity()
             }
-            composable(
-                route = Screen.News.route,
-                arguments = listOf(navArgument("newsId") { type = NavType.IntType })
-            ) {
-                val newsId = it.arguments?.getInt("newsId") ?: -1L
-                NewsScreen(newsId = newsId.toInt())
-            }
+            // Hapus blok composable untuk Screen.News
             composable(
                 route = Screen.Detail.route,
                 arguments = listOf(navArgument("barcode") { type = NavType.StringType })
@@ -156,7 +145,6 @@ fun NutrifactsApp(
                 SettingsScreen()
             }
         }
-
     }
 }
 
@@ -179,14 +167,7 @@ fun TopAppBar(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium
                     )
-                } else if (currentRoute == Screen.News.route) {
-                    Text(
-                        text = "News",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                } else {
+                } else { // Diubah: Hapus kondisi untuk Screen.News
                     Text(
                         text = currentRoute.toString(),
                         maxLines = 1,

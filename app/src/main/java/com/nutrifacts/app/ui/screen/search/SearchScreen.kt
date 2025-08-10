@@ -50,31 +50,42 @@ fun SearchScreen(
         mutableStateOf(false)
     }
     val query by viewModel.query
-    viewModel.result.collectAsState(initial = Result.Loading).value.let { product ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            val scope = rememberCoroutineScope()
-            val listState = rememberLazyListState()
-            LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 80.dp)) {
-                stickyHeader {
-                    SearchBar(
-                        query = query,
-                        onQueryChange = viewModel::searchProducts,
-                    )
-                }
-                when (product) {
-                    is Result.Loading -> {
-                        loading = true
-                        viewModel.searchProducts(query)
-                    }
+    val product by viewModel.result.collectAsState(initial = Result.Loading) // Deklarasi `product` di sini
 
-                    is Result.Success -> {
-                        loading = false
-                        val productData = product.data
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        val scope = rememberCoroutineScope()
+        val listState = rememberLazyListState()
+        LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 80.dp)) {
+            stickyHeader {
+                SearchBar(
+                    query = query,
+                    onQueryChange = viewModel::searchProducts,
+                )
+            }
+            when (product) {
+                is Result.Loading -> {
+                    loading = true
+                }
+
+                is Result.Success -> {
+                    loading = false
+                    val productData = (product as Result.Success).data
+                    if (productData.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Product not found",
+                                textAlign = TextAlign.Center,
+                                modifier = modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp)
+                            )
+                        }
+                    } else {
                         items(items = productData, key = { it.id!! }) { data ->
                             SmallCard(
                                 barcode = data.barcode.toString(),
@@ -85,24 +96,23 @@ fun SearchScreen(
                             )
                         }
                     }
+                }
 
-                    is Result.Error -> {
-                        loading = false
-                        item {
-                            Text(
-                                text = "Product not found",
-                                textAlign = TextAlign.Center,
-                                modifier = modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp)
-                                    .align(Alignment.Center)
-                            )
-                        }
+                is Result.Error -> {
+                    loading = false
+                    item {
+                        Text(
+                            text = "Terjadi kesalahan: ${(product as Result.Error).error}",
+                            textAlign = TextAlign.Center,
+                            modifier = modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp)
+                        )
                     }
                 }
             }
-            LinearLoading(isLoading = loading, modifier = modifier.align(Alignment.BottomCenter))
         }
+        LinearLoading(isLoading = loading, modifier = modifier.align(Alignment.BottomCenter))
     }
 }
 

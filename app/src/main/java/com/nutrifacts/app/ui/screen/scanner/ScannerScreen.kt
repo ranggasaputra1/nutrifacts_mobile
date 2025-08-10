@@ -3,7 +3,6 @@ package com.nutrifacts.app.ui.screen.scanner
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Size
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,13 +15,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -34,11 +27,9 @@ import com.nutrifacts.app.data.Result
 import com.nutrifacts.app.di.Injection
 import com.nutrifacts.app.ui.factory.ProductViewModelFactory
 import com.nutrifacts.app.ui.navigation.Screen
+import java.util.concurrent.Executors
 
-
-private val CAMERAX_PERMISSIONS = arrayOf(
-    Manifest.permission.CAMERA,
-)
+private val CAMERAX_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 
 @Composable
 fun ScannerScreen(
@@ -47,45 +38,33 @@ fun ScannerScreen(
         factory = ProductViewModelFactory(Injection.provideProductRepository(LocalContext.current))
     ),
 ) {
-//    val activity = LocalContext.current as Activity
-//    activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-    val onBackPressedCallback =
-        rememberUpdatedState(newValue = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // Navigate back to the previous screen
-                navController.navigateUp()
-            }
-        })
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val barcode = remember {
-        mutableStateOf("")
-    }
-    val cameraProviderFuture by remember {
-        mutableStateOf(ProcessCameraProvider.getInstance(context))
-    }
+    val barcode = remember { mutableStateOf("") }
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    var hasPermission by remember {
-        mutableStateOf(false)
-    }
-
+    var hasPermission by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
-            if (!granted) {
-                navController.navigateUp()
-            } else {
-                hasPermission = true
-            }
+            if (!granted) navController.navigateUp() else hasPermission = true
         }
     )
 
-    LaunchedEffect(key1 = true) {
+    LaunchedEffect(Unit) {
         if (!hasPermission) {
             launcher.launch(Manifest.permission.CAMERA)
         }
     }
 
+    val onBackPressedCallback = rememberUpdatedState(
+        newValue = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                navController.navigateUp()
+            }
+        }
+    )
     BackHandler(enabled = onBackPressedCallback.value.isEnabled) {
         onBackPressedCallback.value.handleOnBackPressed()
     }
@@ -93,72 +72,57 @@ fun ScannerScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         if (hasPermission) {
             AndroidView(
-                factory = { context ->
-                    val previewView = PreviewView(context)
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx)
                     val preview = Preview.Builder().build()
                     val selector = CameraSelector.Builder()
-                        .requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
+                        .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                        .build()
+
                     preview.setSurfaceProvider(previewView.surfaceProvider)
+
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetResolution(Size(previewView.width, previewView.height))
+                        .setTargetResolution(Size(640, 480))
                         .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
                         .build()
-                    imageAnalysis.setAnalyzer(
-                        ContextCompat.getMainExecutor(context),
-                        BarcodeScanner { result ->
+
+                    imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner { result ->
+                        if (result.all { it.isDigit() } && barcode.value.isEmpty()) {
                             barcode.value = result
+                            cameraProviderFuture.get().unbindAll()
                         }
+                    })
+
+                    cameraProviderFuture.get().bindToLifecycle(
+                        lifecycleOwner, selector, preview, imageAnalysis
                     )
-                    try {
-                        cameraProviderFuture.get().bindToLifecycle(
-                            lifecycleOwner, selector, preview, imageAnalysis
-                        )
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+
                     previewView
-                }, modifier = Modifier
+                },
+                modifier = Modifier
                     .weight(1f)
                     .fillMaxSize()
             )
 
-            LaunchedEffect(barcode) {
-                viewModel.getProductByBarcode(barcode.value)
+            LaunchedEffect(barcode.value) {
+                if (barcode.value.isNotEmpty()) {
+                    viewModel.getProductByBarcode(barcode.value)
+                }
+            }
+
+            LaunchedEffect(Unit) {
                 viewModel.result.collect { result ->
-                    if (result != null) {
-                        when (result) {
-                            is Result.Loading -> {
-
-                            }
-
-                            is Result.Success -> {
-                                navController.navigate(
-                                    Screen.Detail.createRoute(barcode.value)
-                                )
-                            }
-
-                            is Result.Error -> {
-                                Toast.makeText(
-                                    context,
-                                    result.error,
-                                    Toast.LENGTH_SHORT
-                                )
-                                    .show()
-                            }
+                    when (result) {
+                        is Result.Success -> {
+                            navController.navigate(Screen.Detail.createRoute(barcode.value))
                         }
+                        is Result.Error -> {
+                            // Bisa tambahkan Toast error di sini kalau mau
+                        }
+                        else -> {}
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun hasRequiredPermissions(): Boolean {
-    return CAMERAX_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(
-            LocalContext.current,
-            it
-        ) == PackageManager.PERMISSION_GRANTED
     }
 }

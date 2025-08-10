@@ -4,7 +4,6 @@ import android.content.Context
 import com.nutrifacts.app.data.local.room.HistoryDatabase
 import com.nutrifacts.app.data.pref.UserPreference
 import com.nutrifacts.app.data.pref.dataStore
-import com.nutrifacts.app.data.repository.NewsRepository
 import com.nutrifacts.app.data.repository.ProductRepository
 import com.nutrifacts.app.data.repository.UserRepository
 import com.nutrifacts.app.data.retrofit.APIConfig
@@ -25,12 +24,5 @@ object Injection {
         val historyDatabase = HistoryDatabase.getDatabase(context)
         val apiService = APIConfig.getApiService(user.token)
         return ProductRepository.getInstance(historyDatabase, apiService)
-    }
-
-    fun provideNewsRepository(context: Context): NewsRepository {
-        val pref = UserPreference.getInstance(context.dataStore)
-        val user = runBlocking { pref.getSession().first() }
-        val apiService = APIConfig.getApiService(user.token)
-        return NewsRepository.getInstance(apiService)
     }
 }

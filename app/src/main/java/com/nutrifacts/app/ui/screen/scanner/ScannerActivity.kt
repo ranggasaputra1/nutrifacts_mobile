@@ -7,9 +7,7 @@ import android.util.Size
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -17,14 +15,14 @@ import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -39,6 +37,7 @@ import com.nutrifacts.app.ui.factory.ProductViewModelFactory
 import com.nutrifacts.app.ui.navigation.Screen
 import com.nutrifacts.app.ui.screen.detail.DetailScreen
 import com.nutrifacts.app.ui.screen.scanner.ui.theme.NutrifactsTheme
+import java.util.concurrent.Executors
 
 class ScannerActivity : ComponentActivity() {
 
@@ -48,116 +47,138 @@ class ScannerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Back handler
         val onBackPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // Navigate back to the previous screen
                 finish()
             }
         }
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
+
         setContent {
             NutrifactsTheme {
                 val navController = rememberNavController()
+
                 NavHost(navController = navController, startDestination = Screen.Scanner.route) {
                     composable(Screen.Scanner.route) {
-                        var barcode by remember {
-                            mutableStateOf("")
-                        }
                         val context = LocalContext.current
                         val lifecycleOwner = LocalLifecycleOwner.current
-                        val cameraProviderFuture = remember {
-                            ProcessCameraProvider.getInstance(context)
-                        }
+                        val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+                        val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+                        var barcode by remember { mutableStateOf("") }
                         var hasPermission by remember {
-                            mutableStateOf(hasRequiredPermissions())
+                            mutableStateOf(
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+                            )
                         }
-                        val launcher = rememberLauncherForActivityResult(
-                            contract = ActivityResultContracts.RequestPermission(),
-                            onResult = { granted ->
-                                hasPermission = granted
-                            }
-                        )
-                        LaunchedEffect(key1 = true) {
-                            if (!hasPermission) launcher.launch(Manifest.permission.CAMERA)
-                        }
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            if (hasPermission) {
+
+                        var isLoading by remember { mutableStateOf(false) }
+                        var toastShown by remember { mutableStateOf(false) }
+
+                        // Tampilkan toast landscape mode sekali saja
+                        LaunchedEffect(Unit) {
+                            if (!toastShown) {
                                 Toast.makeText(
                                     context,
-                                    "Please use landscape mode to scan",
-                                    Toast.LENGTH_SHORT
-                                )
-                                    .show()
-                                AndroidView(
-                                    factory = { context ->
-                                        val previewView = PreviewView(context)
-                                        val preview = Preview.Builder().build()
-                                        val selector = CameraSelector.Builder()
-                                            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                                            .build()
-                                        preview.setSurfaceProvider(previewView.surfaceProvider)
-                                        val imageAnalysis = ImageAnalysis.Builder()
-                                            .setTargetResolution(
-                                                Size(
-                                                    previewView.width,
-                                                    previewView.height
+                                    "Gunakan mode landscape untuk hasil terbaik",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                toastShown = true
+                            }
+                        }
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                if (hasPermission) {
+                                    AndroidView(
+                                        factory = { ctx ->
+                                            val previewView = PreviewView(ctx)
+                                            val preview = Preview.Builder().build()
+                                            val selector = CameraSelector.Builder()
+                                                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                                                .build()
+
+                                            preview.setSurfaceProvider(previewView.surfaceProvider)
+
+                                            val imageAnalysis = ImageAnalysis.Builder()
+                                                .setTargetResolution(Size(640, 480))
+                                                .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
+                                                .build()
+
+                                            imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner { result ->
+                                                if (result.all { it.isDigit() } && barcode.isEmpty()) {
+                                                    barcode = result
+                                                    isLoading = true // tampilkan loading
+                                                    try {
+                                                        cameraProviderFuture.get().unbindAll()
+                                                    } catch (_: Exception) { }
+                                                    viewModel.getProductByBarcode(result)
+                                                }
+                                            })
+
+                                            try {
+                                                cameraProviderFuture.get().bindToLifecycle(
+                                                    lifecycleOwner, selector, preview, imageAnalysis
                                                 )
-                                            )
-                                            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
-                                            .build()
-                                        imageAnalysis.setAnalyzer(
-                                            ContextCompat.getMainExecutor(context),
-                                            BarcodeScanner { result ->
-                                                barcode = result
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
                                             }
-                                        )
-                                        try {
-                                            cameraProviderFuture.get().bindToLifecycle(
-                                                lifecycleOwner, selector, preview, imageAnalysis
-                                            )
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                        previewView
-                                    }, modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize()
-                                )
-                                LaunchedEffect(barcode) {
-                                    viewModel.result.collect { result ->
-                                        if (result != null && barcode != "" && barcode != null) {
-                                            when (result) {
-                                                is Result.Loading -> {
-                                                    viewModel.getProductByBarcode(barcode)
-                                                }
+                                            previewView
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxSize()
+                                    )
 
-                                                is Result.Success -> {
-                                                    navController.navigate(
-                                                        Screen.Detail.createRoute(barcode)
-                                                    )
-                                                }
+                                    val apiResult by viewModel.result.collectAsState(initial = Result.Loading)
 
-                                                is Result.Error -> {
-                                                    Toast.makeText(
-                                                        context,
-                                                        result.error,
-                                                        Toast.LENGTH_SHORT
-                                                    )
-                                                        .show()
+                                    LaunchedEffect(apiResult) {
+                                        when (apiResult) {
+                                            is Result.Success -> {
+                                                isLoading = false
+                                                if (barcode.isNotEmpty()) {
+                                                    navController.navigate(Screen.Detail.createRoute(barcode))
                                                 }
                                             }
+                                            is Result.Error -> {
+                                                isLoading = false
+                                                val err = (apiResult as Result.Error).error
+                                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                                // barcode = "" // aktifkan jika mau scan ulang
+                                            }
+                                            else -> {}
                                         }
                                     }
                                 }
                             }
+
+                            // Overlay loading
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color(0x88000000)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                         }
                     }
+
                     composable(
                         route = Screen.Detail.route,
                         arguments = listOf(navArgument("barcode") { type = NavType.StringType })
                     ) {
-                        val barcode = it.arguments?.getString("barcode") ?: ""
-                        DetailScreen(barcode = barcode)
+                        val barcodeArg = it.arguments?.getString("barcode") ?: ""
+                        DetailScreen(barcode = barcodeArg)
                     }
                 }
             }

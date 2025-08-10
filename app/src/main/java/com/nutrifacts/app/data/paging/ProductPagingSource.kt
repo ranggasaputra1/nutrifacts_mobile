@@ -2,6 +2,7 @@ package com.nutrifacts.app.data.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import com.nutrifacts.app.data.response.GetAllProductResponse
 import com.nutrifacts.app.data.response.GetAllProductResponseItem
 import com.nutrifacts.app.data.retrofit.APIService
 
@@ -24,13 +25,12 @@ class ProductPagingSource(private val apiService: APIService):PagingSource<Int,G
             val responseData = apiService.getAllProducts()
 
             LoadResult.Page(
-                data = responseData.product,
+                data = responseData.products, // Perbaikan di sini
                 prevKey = if (position == INITIAL_PAGE_INDEX) null else position -1,
-                nextKey = if (responseData.product.isEmpty()) null else position + 1
+                nextKey = if (responseData.products.isEmpty()) null else position + 1 // Perbaikan di sini
             )
         }catch (e:Exception){
             return LoadResult.Error(e)
         }
     }
-
 }

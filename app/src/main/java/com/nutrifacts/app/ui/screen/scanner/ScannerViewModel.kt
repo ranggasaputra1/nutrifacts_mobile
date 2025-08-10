@@ -19,8 +19,8 @@ class ScannerViewModel(private val repository: ProductRepository) : ViewModel() 
     fun getProductByBarcode(barcode: String) {
         viewModelScope.launch {
             repository.getProductByBarcode(barcode)
-                .catch {
-                    _result.value = Result.Error(it.message.toString())
+                .catch { e ->
+                    _result.value = Result.Error(e.message.toString())
                 }
                 .collect { result ->
                     _result.value = result

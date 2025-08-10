@@ -18,8 +18,10 @@ import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.PUT // Tambahkan ini untuk route PUT
 
 interface APIService {
+    // --- User Routes ---
     @FormUrlEncoded
     @POST("user/signup")
     suspend fun signup(
@@ -36,17 +38,17 @@ interface APIService {
     ): LoginResponse
 
     @GET("user")
-    suspend fun getAllUser(
-    ): GetAllUserResponse
+    suspend fun getAllUser(): GetAllUserResponse
 
+    // Endpoint getUserById di backend Anda adalah GET "/user/:id"
     @GET("user/{id}")
     suspend fun getUserById(
         @Path("id") id: Int
     ): GetUserByIdResponse
 
+    // --- Product Routes ---
     @GET("product")
-    suspend fun getAllProducts(
-    ): GetAllProductResponse
+    suspend fun getAllProducts(): GetAllProductResponse
 
     @GET("product/name/{name}")
     suspend fun getProductByName(
@@ -58,9 +60,11 @@ interface APIService {
         @Path("barcode") barcode: String
     ): GetProductByBarcodeResponse
 
-    @GET("user/saved/{user_id}")
+    // --- User Saved Routes ---
+    // Endpoint di backend Anda menggunakan ":id", yang merujuk ke user_id
+    @GET("user/saved/{id}")
     suspend fun getSavedProduct(
-        @Path("user_id") user_id: Int
+        @Path("id") id: Int // Ubah nama parameter menjadi "id" agar sesuai dengan route Express.js
     ): GetSavedProductResponse
 
     @FormUrlEncoded
@@ -70,19 +74,12 @@ interface APIService {
         @Field("company") company: String,
         @Field("photoUrl") photoUrl: String,
         @Field("barcode") barcode: String,
-        @Field("user_id") user_id: Int,
+        @Field("id_user") id_user: Int, // Ubah parameter menjadi id_user
     ): SaveProductResponse
 
+    // Endpoint di backend Anda menggunakan ":id" untuk ID item yang disimpan
     @DELETE("user/saved/{id}")
     suspend fun deleteSavedProduct(
         @Path("id") id: Int
     ): DeleteSavedProductResponse
-
-    @GET("news")
-    suspend fun getAllNews(): GetAllNewsResponse
-
-    @GET("news/{id}")
-    suspend fun getNewsById(
-        @Path("id") id: Int
-    ): GetNewsByIdResponse
 }
