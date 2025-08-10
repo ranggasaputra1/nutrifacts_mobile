@@ -91,7 +91,7 @@ fun LoginScreen(
                                             loading = false
                                             Toast.makeText(
                                                 context,
-                                                "Login Successful",
+                                                "Login Berhasil",
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                             navigateToHome()

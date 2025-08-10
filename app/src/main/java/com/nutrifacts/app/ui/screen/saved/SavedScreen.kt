@@ -61,7 +61,7 @@ fun SavedScreen(
                         val savedProduct = saved.data
                         if (savedProduct.isEmpty()) {
                             Text(
-                                text = "You don't have any saved products",
+                                text = "Anda tidak memiliki produk yang tersimpan",
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(16.dp),

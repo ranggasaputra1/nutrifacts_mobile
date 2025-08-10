@@ -5,7 +5,7 @@ class ValidateRepeatPassword {
         if (password != repeatPassword) {
             return ValidationResults(
                 success = false,
-                errorMsg = "Passwords don't match"
+                errorMsg = "Kata sandi tidak sama"
             )
         }
         return ValidationResults(

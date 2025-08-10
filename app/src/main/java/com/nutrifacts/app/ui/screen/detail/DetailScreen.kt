@@ -2,28 +2,11 @@ package com.nutrifacts.app.ui.screen.detail
 
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -42,6 +25,8 @@ import com.nutrifacts.app.data.pref.dataStore
 import com.nutrifacts.app.ui.components.LinearLoading
 import com.nutrifacts.app.ui.factory.ProductViewModelFactory
 import com.nutrifacts.app.utils.DateConverter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun DetailScreen(
@@ -54,18 +39,15 @@ fun DetailScreen(
     val context = LocalContext.current
     val currentTimeMillis = System.currentTimeMillis()
     val formattedDate = DateConverter.convertMillisToString(currentTimeMillis)
-    var isSaved by remember {
-        mutableStateOf(false)
-    }
-    var thisSavedProductId by remember {
-        mutableStateOf(0)
-    }
-    var loading by remember {
-        mutableStateOf(false)
-    }
-    var insertUserHistory by remember {
-        mutableStateOf(true)
-    }
+    var isSaved by remember { mutableStateOf(false) }
+    var thisSavedProductId by remember { mutableStateOf(0) }
+    var loading by remember { mutableStateOf(false) }
+    var insertUserHistory by remember { mutableStateOf(true) }
+
+    // State untuk nutrilevel
+    var showNutrilevel by remember { mutableStateOf(false) }
+    var nutrilevelLoading by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     val user =
         UserPreference.getInstance(LocalContext.current.dataStore).getSession().collectAsState(
@@ -73,9 +55,11 @@ fun DetailScreen(
         ).value
 
     viewModel.result.collectAsState(initial = Result.Loading).value.let { product ->
-        Box(modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
             when (product) {
                 is Result.Loading -> {
                     loading = true
@@ -85,7 +69,7 @@ fun DetailScreen(
                 is Result.Success -> {
                     val productData = product.data
                     Log.d("Detail", "$productData")
-                    if (insertUserHistory){
+                    if (insertUserHistory) {
                         viewModel.insertHistory(
                             History(
                                 name = productData.name.toString(),
@@ -116,7 +100,7 @@ fun DetailScreen(
                                             thisSavedProductId = item.id
                                         }
                                     }
-                                    Log.d("Detail", "$thisSavedProductId")
+
                                     Column(modifier = modifier.fillMaxWidth()) {
                                         AsyncImage(
                                             model = productData.photoUrl
@@ -143,16 +127,13 @@ fun DetailScreen(
                                                 )
                                                 if (isSaved) {
                                                     IconButton(onClick = {
-                                                        viewModel.deleteSavedProduct(
-                                                            thisSavedProductId
-                                                        )
+                                                        viewModel.deleteSavedProduct(thisSavedProductId)
                                                         isSaved = false
                                                         Toast.makeText(
                                                             context,
                                                             "Product removed from saved",
                                                             Toast.LENGTH_SHORT
-                                                        )
-                                                            .show()
+                                                        ).show()
                                                     }) {
                                                         Icon(
                                                             painter = painterResource(id = R.drawable.baseline_bookmark_24),
@@ -173,8 +154,7 @@ fun DetailScreen(
                                                             context,
                                                             "Product saved",
                                                             Toast.LENGTH_SHORT
-                                                        )
-                                                            .show()
+                                                        ).show()
                                                     }) {
                                                         Icon(
                                                             painter = painterResource(id = R.drawable.baseline_bookmark_border_24),
@@ -183,6 +163,8 @@ fun DetailScreen(
                                                     }
                                                 }
                                             }
+
+                                            // Data nutrisi
                                             Column {
                                                 Text(
                                                     text = stringResource(id = R.string.nutrition_facts),
@@ -194,66 +176,21 @@ fun DetailScreen(
                                                         .height(1.dp),
                                                     color = MaterialTheme.colorScheme.onSurface
                                                 )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.calories),
-                                                    value = productData.calories
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.total_fat),
-                                                    value = productData.totalFat
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.sat_fat),
-                                                    value = productData.saturatedFat
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.trans_fat),
-                                                    value = productData.transFat
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.cholesterol),
-                                                    value = productData.cholesterol
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.sodium),
-                                                    value = productData.sodium
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.carbohydrate),
-                                                    value = productData.totalCarbohydrate
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.fiber),
-                                                    value = productData.dietaryFiber
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.sugar),
-                                                    value = productData.sugar
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.protein),
-                                                    value = productData.protein
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.vitamin_a),
-                                                    value = productData.vitaminA
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.vitamin_c),
-                                                    value = productData.vitaminC
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.vitamin_d),
-                                                    value = productData.vitaminD
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.calcium),
-                                                    value = productData.calcium
-                                                )
-                                                NutritionData(
-                                                    label = stringResource(id = R.string.iron),
-                                                    value = productData.iron
-                                                )
+                                                NutritionData(label = stringResource(id = R.string.calories), value = productData.calories)
+                                                NutritionData(label = stringResource(id = R.string.total_fat), value = productData.totalFat)
+                                                NutritionData(label = stringResource(id = R.string.sat_fat), value = productData.saturatedFat)
+                                                NutritionData(label = stringResource(id = R.string.trans_fat), value = productData.transFat)
+                                                NutritionData(label = stringResource(id = R.string.cholesterol), value = productData.cholesterol)
+                                                NutritionData(label = stringResource(id = R.string.sodium), value = productData.sodium)
+                                                NutritionData(label = stringResource(id = R.string.carbohydrate), value = productData.totalCarbohydrate)
+                                                NutritionData(label = stringResource(id = R.string.fiber), value = productData.dietaryFiber)
+                                                NutritionData(label = stringResource(id = R.string.sugar), value = productData.sugar)
+                                                NutritionData(label = stringResource(id = R.string.protein), value = productData.protein)
+                                                NutritionData(label = stringResource(id = R.string.vitamin_a), value = productData.vitaminA)
+                                                NutritionData(label = stringResource(id = R.string.vitamin_c), value = productData.vitaminC)
+                                                NutritionData(label = stringResource(id = R.string.vitamin_d), value = productData.vitaminD)
+                                                NutritionData(label = stringResource(id = R.string.calcium), value = productData.calcium)
+                                                NutritionData(label = stringResource(id = R.string.iron), value = productData.iron)
                                                 Divider(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
@@ -262,29 +199,48 @@ fun DetailScreen(
                                                     color = MaterialTheme.colorScheme.onSurface
                                                 )
                                             }
+
                                             Spacer(modifier = modifier.height(16.dp))
+
+                                            // Bagian Nutrilevel dengan tombol
                                             Row(
                                                 modifier = modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(
                                                     text = "Nutrilevel",
                                                     style = MaterialTheme.typography.titleMedium,
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
-                                                if (productData.nutritionLevel != null && productData.nutritionLevel != "") {
+                                                if (!showNutrilevel) {
+                                                    if (nutrilevelLoading) {
+                                                        CircularProgressIndicator(
+                                                            modifier = Modifier.size(20.dp),
+                                                            strokeWidth = 2.dp
+                                                        )
+                                                    } else {
+                                                        Button(onClick = {
+                                                            nutrilevelLoading = true
+                                                            coroutineScope.launch {
+                                                                delay(2000) // simulasi proses algoritma
+                                                                nutrilevelLoading = false
+                                                                showNutrilevel = true
+                                                            }
+                                                        }) {
+                                                            Text("Lihat Level Nutrisi")
+                                                        }
+                                                    }
+                                                } else {
                                                     Text(
-                                                        text = productData.nutritionLevel.toString(),
+                                                        text = if (productData.nutritionLevel.isNullOrEmpty()) "N/A"
+                                                        else productData.nutritionLevel.toString(),
                                                         style = MaterialTheme.typography.titleMedium,
                                                         color = MaterialTheme.colorScheme.primary
                                                     )
-                                                } else {
-                                                    Text(
-                                                        text = "N/A",
-                                                        style = MaterialTheme.typography.titleMedium
-                                                    )
                                                 }
                                             }
+
                                             Text(
                                                 text = "Product by ${productData.company}",
                                                 style = MaterialTheme.typography.labelSmall,
@@ -299,12 +255,7 @@ fun DetailScreen(
 
                                 is Result.Error -> {
                                     loading = false
-                                    Toast.makeText(
-                                        context,
-                                        savedProduct.error,
-                                        Toast.LENGTH_SHORT
-                                    )
-                                        .show()
+                                    Toast.makeText(context, savedProduct.error, Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -313,12 +264,7 @@ fun DetailScreen(
 
                 is Result.Error -> {
                     loading = false
-                    Toast.makeText(
-                        context,
-                        product.error,
-                        Toast.LENGTH_SHORT
-                    )
-                        .show()
+                    Toast.makeText(context, product.error, Toast.LENGTH_SHORT).show()
                 }
             }
             LinearLoading(
@@ -331,7 +277,7 @@ fun DetailScreen(
 
 @Composable
 fun NutritionData(modifier: Modifier = Modifier, label: String, value: String? = null) {
-    if (value != null && value != "") {
+    if (!value.isNullOrEmpty()) {
         Column(
             modifier = modifier
                 .padding(vertical = 8.dp, horizontal = 16.dp)

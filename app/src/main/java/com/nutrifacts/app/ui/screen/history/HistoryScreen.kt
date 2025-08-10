@@ -38,7 +38,7 @@ fun HistoryScreen(
     Box(modifier = modifier.fillMaxSize()) {
         if (history.isEmpty()) {
             Text(
-                text = "You don't have any history",
+                text = "Anda tidak memiliki riwayat apa pun",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)

@@ -5,7 +5,7 @@ class ValidateUsername {
         if (username.isBlank()) {
             return ValidationResults(
                 success = false,
-                errorMsg = "Username can't be empty"
+                errorMsg = "Username tidak boleh kosong"
             )
         }
         return ValidationResults(

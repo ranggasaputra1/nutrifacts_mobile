@@ -10,15 +10,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AlternateEmail
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,11 +47,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nutrifacts.app.R
 import com.nutrifacts.app.data.Result
@@ -72,6 +82,10 @@ fun SignupScreen(
     var showPassword by remember {
         mutableStateOf(false)
     }
+    var showTermsDialog by remember {
+        mutableStateOf(false)
+    }
+
     LaunchedEffect(key1 = context) {
         viewModel.validationEvents.collect { event ->
             when (event) {
@@ -283,6 +297,9 @@ fun SignupScreen(
                 Checkbox(
                     checked = state.acceptedTermsConditions,
                     onCheckedChange = {
+                        if (it) {
+                            showTermsDialog = true
+                        }
                         viewModel.onEvent(SignupFormEvent.AcceptTermsConditionsChanged(it))
                     }
                 )
@@ -304,7 +321,12 @@ fun SignupScreen(
                     startX = 25f,
                 ),
                 onClick = {
-                    viewModel.onEvent(SignupFormEvent.Submit)
+                    if (state.acceptedTermsConditions) {
+                        viewModel.onEvent(SignupFormEvent.Submit)
+                    } else {
+                        // Opsi: Tampilkan toast atau pesan peringatan jika belum dicentang
+                        Toast.makeText(context, "Anda harus menyetujui syarat dan ketentuan.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
             Spacer(modifier = modifier.height(16.dp))
@@ -336,5 +358,106 @@ fun SignupScreen(
             }
         }
         LinearLoading(isLoading = loading, modifier.align(Alignment.BottomCenter))
+
+        if (showTermsDialog) {
+            Dialog(onDismissRequest = {
+                showTermsDialog = false
+                viewModel.onEvent(SignupFormEvent.AcceptTermsConditionsChanged(false))
+            }) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 8.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Icon
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "info icon",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        // Judul
+                        Text(
+                            text = "Penting: Syarat dan Ketentuan",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        // Pesan Peringatan Akurasi & Pengembangan
+                        Text(
+                            text = "Aplikasi ini masih dalam tahap pengembangan. Data yang disediakan mungkin tidak 100% akurat. Selalu konsultasikan dengan ahli gizi atau dokter untuk keputusan kesehatan.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Jika terjadi bug atau error, silakan coba Tunggu, Logout atau Reinstall aplikasi.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        // Instruksi Izin Kamera yang Diperjelas
+                        Text(
+                            text = "Akses Kamera",
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = buildAnnotatedString {
+                                append("Untuk menggunakan fitur ")
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("Scan Barcode")
+                                }
+                                append(",Anda perlu mengaktifkan izin kamera di aplikasi. Berikut langkah-langkahnya:")
+                            },
+                            textAlign = TextAlign.Start,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        )
+
+                        Text(
+                            text = "1. buka menu profil di pojok kanan atas aplikasi.\n2. Pilih menu pengaturan.\n3. Izinkan akses untuk 'Kamera'.",
+                            textAlign = TextAlign.Start,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        // Tombol
+                        Button(
+                            onClick = {
+                                showTermsDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text(text = "Saya Mengerti")
+                        }
+                    }
+                }
+            }
+        }
     }
 }

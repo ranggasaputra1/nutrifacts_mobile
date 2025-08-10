@@ -7,13 +7,13 @@ class ValidateEmail {
         if (email.isBlank()) {
             return ValidationResults(
                 success = false,
-                errorMsg = "Email can't be empty"
+                errorMsg = "Email tidak boleh kosong"
             )
         }
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             return ValidationResults(
                 success = false,
-                errorMsg = "Invalid email format"
+                errorMsg = "Format Email tidak valid"
             )
         }
         return ValidationResults(

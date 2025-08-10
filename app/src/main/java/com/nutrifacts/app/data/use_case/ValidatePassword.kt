@@ -5,7 +5,14 @@ class ValidatePassword {
         if (password.length < 8) {
             return ValidationResults(
                 success = false,
-                errorMsg = "Password needs to consist of at least 8 characters"
+                errorMsg = "Kata sandi harus terdiri dari minimal 8 karakter"
+            )
+        }
+        // Tambahkan validasi untuk panjang maksimum 20 karakter
+        if (password.length > 20) {
+            return ValidationResults(
+                success = false,
+                errorMsg = "Kata sandi tidak boleh lebih dari 20 karakter"
             )
         }
         val containLettersAndDigits =
@@ -13,7 +20,7 @@ class ValidatePassword {
         if (!containLettersAndDigits) {
             return ValidationResults(
                 success = false,
-                errorMsg = "Password needs to contain at least one letter and digit"
+                errorMsg = "Kata sandi harus mengandung setidaknya satu huruf dan satu angka"
             )
         }
         return ValidationResults(

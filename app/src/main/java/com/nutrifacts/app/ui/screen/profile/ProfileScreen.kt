@@ -1,35 +1,20 @@
 package com.nutrifacts.app.ui.screen.profile
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,9 +39,9 @@ fun ProfileScreen(
     )
 ) {
     val context = LocalContext.current
-    var loading by remember {
-        mutableStateOf(false)
-    }
+    var loading by remember { mutableStateOf(false) }
+    var showConsultDialog by remember { mutableStateOf(false) }
+
     val userSession by viewModel.getSession().collectAsState(initial = UserModel(0, "", false))
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -67,7 +52,6 @@ fun ProfileScreen(
                         loading = true
                         viewModel.getUserById(userSession.id)
                     }
-
                     is Result.Success -> {
                         loading = false
                         val userData = user.data
@@ -78,9 +62,7 @@ fun ProfileScreen(
                             ) {
                                 Image(
                                     imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = stringResource(
-                                        R.string.profile_pic
-                                    ),
+                                    contentDescription = stringResource(R.string.profile_pic),
                                     modifier = modifier.size(120.dp)
                                 )
                                 Spacer(modifier = modifier.width(8.dp))
@@ -116,6 +98,14 @@ fun ProfileScreen(
                                 label = stringResource(id = R.string.settings),
                                 onClick = { navController.navigate(Screen.Settings.route) }
                             )
+
+                            // Menu Konsultasi Gizi Langsung
+                            SelectionVector(
+                                icon = Icons.Default.MedicalServices,
+                                label = "Konsultasi Gizi Langsung",
+                                onClick = { showConsultDialog = true }
+                            )
+
                             Divider(color = MaterialTheme.colorScheme.onSurface, thickness = 1.dp)
                             SelectionVector(
                                 icon = Icons.Default.ExitToApp,
@@ -128,7 +118,6 @@ fun ProfileScreen(
                             )
                         }
                     }
-
                     is Result.Error -> {
                         loading = false
                         Toast.makeText(context, user.error, Toast.LENGTH_SHORT).show()
@@ -139,6 +128,68 @@ fun ProfileScreen(
         LinearLoading(
             isLoading = loading,
             modifier = modifier.align(Alignment.BottomCenter)
+        )
+    }
+
+    // Dialog Konsultasi Gizi Langsung
+    if (showConsultDialog) {
+        AlertDialog(
+            onDismissRequest = { showConsultDialog = false },
+            title = {
+                Text(
+                    "Konsultasi Gizi Langsung\n Puskesmas Sukajadi",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Silakan akses link berikut untuk pendaftaran online atau hubungi nomor di bawah ini untuk informasi:",
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://e-kes.bandungkab.go.id/daftaronline/")
+                        )
+                        context.startActivity(intent)
+                    }) {
+                        Text(
+                            "https://e-kes.bandungkab.go.id/daftaronline/",
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:02285923454"))
+                        context.startActivity(intent)
+                    }) {
+                        Text(
+                            "022-85923454",
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    TextButton(onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:082120225075"))
+                        context.startActivity(intent)
+                    }) {
+                        Text(
+                            "0821-2022-5075",
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showConsultDialog = false }) {
+                    Text("Tutup")
+                }
+            }
         )
     }
 }
