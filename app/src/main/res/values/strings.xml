@@ -52,4 +52,12 @@
     <string name="vitamin_d">Vitamin D</string>
     <string name="calcium">Kalsium</string>
     <string name="iron">Zat Besi</string>
+
+
+        <string name="nutrilevel_a_desc">Nilai A: Produk ini memiliki profil nutrisi optimal dengan kandungan karbohidrat, lemak, kalori, dan protein yang ideal untuk konsumsi harian.</string>
+        <string name="nutrilevel_b_desc">Nilai B: Produk ini memiliki profil nutrisi seimbang. Cocok sebagai bagian dari pola makan harian yang bervariasi.</string>
+        <string name="nutrilevel_c_desc">Nilai C: Produk ini memiliki kandungan karbohidrat, lemak, atau kalori yang tinggi. Cocok untuk konsumsi sesekali, bukan sebagai bagian rutin dari pola makan harian.</string>
+        <string name="nutrilevel_d_desc">Nilai D: Produk ini memiliki kandungan karbohidrat, lemak, atau kalori yang berlebihan. Konsumsi harian harus dipertimbangkan dengan porsi yang kecil dan terpantau.</string>
+        <string name="nutrilevel_unknown_desc">Informasi nutrisi tidak tersedia atau tidak terklasifikasi.</string>
+
 </resources>

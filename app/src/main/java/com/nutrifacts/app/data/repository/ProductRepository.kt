@@ -5,10 +5,10 @@ import com.google.gson.Gson
 import com.nutrifacts.app.data.Result
 import com.nutrifacts.app.data.local.entity.History
 import com.nutrifacts.app.data.local.room.HistoryDatabase
+import com.nutrifacts.app.data.model.ProductModel
+import com.nutrifacts.app.data.response.DeleteSavedProductResponse
 import com.nutrifacts.app.data.response.ErrorResponse
-import com.nutrifacts.app.data.response.GetAllProductResponseItem
-import com.nutrifacts.app.data.response.Product
-import com.nutrifacts.app.data.response.ProductItem
+import com.nutrifacts.app.data.response.SaveProductResponse
 import com.nutrifacts.app.data.response.UserSavedItem
 import com.nutrifacts.app.data.retrofit.APIService
 import kotlinx.coroutines.Dispatchers
@@ -22,12 +22,11 @@ class ProductRepository private constructor(
     private val historyDatabase: HistoryDatabase,
     private val apiService: APIService
 ) {
-
-    fun getAllProducts(): Flow<Result<List<GetAllProductResponseItem>>> = flow {
+    fun getAllProducts(): Flow<Result<List<ProductModel>>> = flow {
         emit(Result.Loading)
         try {
             val response = apiService.getAllProducts()
-            emit(Result.Success(response.products)) // Perbaikan di sini
+            emit(Result.Success(response.products))
         } catch (e: HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
             val errorResponse = Gson().fromJson(errorBody, ErrorResponse::class.java)
@@ -35,12 +34,12 @@ class ProductRepository private constructor(
         }
     }
 
-    fun getProductByName(name: String): Flow<Result<List<ProductItem>>> = flow {
+    fun getProductByName(name: String): Flow<Result<List<ProductModel>>> = flow {
         emit(Result.Loading)
         try {
             val response = apiService.getProductByName(name)
             Log.d("repository", "$response")
-            emit(Result.Success(response.products)) // Perbaikan di sini
+            emit(Result.Success(response.products))
         } catch (e: HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
             val errorResponse = Gson().fromJson(errorBody, ErrorResponse::class.java)
@@ -49,7 +48,7 @@ class ProductRepository private constructor(
         }
     }
 
-    fun getProductByBarcode(barcode: String): Flow<Result<Product>> = flow {
+    fun getProductByBarcode(barcode: String): Flow<Result<ProductModel>> = flow {
         emit(Result.Loading)
         try {
             val response = apiService.getProductByBarcode(barcode)

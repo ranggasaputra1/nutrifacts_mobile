@@ -1,35 +1,15 @@
 package com.nutrifacts.app.data.response
 
-import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
+import com.nutrifacts.app.data.model.ProductModel
 
 data class GetAllProductResponse(
-
-	@field:SerializedName("products") // Perbaiki di sini
-	val products: List<GetAllProductResponseItem> = emptyList(),
-
 	@field:SerializedName("success")
-	val success: Boolean? = null,
+	val success: Boolean,
 
 	@field:SerializedName("message")
-	val message: String? = null
-)
+	val message: String,
 
-data class GetAllProductResponseItem(
-
-	@field:SerializedName("photoUrl")
-	val photoUrl: String? = null,
-
-	@field:SerializedName("name")
-	val name: String? = null,
-
-	@field:SerializedName("company")
-	val company: String? = null,
-
-	@PrimaryKey
-	@field:SerializedName("id")
-	val id: Int? = null,
-
-	@field:SerializedName("barcode")
-	val barcode: String? = null,
+	@field:SerializedName("products")
+	val products: List<ProductModel>
 )

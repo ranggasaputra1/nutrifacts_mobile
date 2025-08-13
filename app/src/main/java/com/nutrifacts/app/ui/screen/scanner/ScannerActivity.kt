@@ -11,10 +11,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.*
 import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
-import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.*
@@ -37,6 +35,7 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.nutrifacts.app.data.Result
@@ -46,6 +45,8 @@ import com.nutrifacts.app.ui.screen.detail.DetailScreen
 import com.nutrifacts.app.ui.screen.scanner.ui.theme.NutrifactsTheme
 import java.util.concurrent.Executors
 import kotlinx.coroutines.delay
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class ScannerActivity : ComponentActivity() {
 
@@ -79,6 +80,15 @@ class ScannerActivity : ComponentActivity() {
                         var barcode by remember { mutableStateOf("") }
                         var isLoading by remember { mutableStateOf(false) }
                         var showBarcodeDetectedLine by remember { mutableStateOf(false) }
+                        var isProcessing by remember { mutableStateOf(false) }
+
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        LaunchedEffect(navBackStackEntry) {
+                            if (navBackStackEntry?.destination?.route == Screen.Scanner.route) {
+                                isProcessing = false
+                                barcode = ""
+                            }
+                        }
 
                         if (showPermissionDialog && !hasPermission) {
                             AlertDialog(
@@ -132,46 +142,49 @@ class ScannerActivity : ComponentActivity() {
                                 }
                             }
 
+                            DisposableEffect(lifecycleOwner) {
+                                val cameraProvider = cameraProviderFuture.get()
+                                onDispose {
+                                    cameraProvider.unbindAll()
+                                }
+                            }
+
                             Box(modifier = Modifier.fillMaxSize()) {
                                 AndroidView(
                                     factory = { ctx ->
                                         val previewView = PreviewView(ctx)
-                                        val preview = Preview.Builder().build()
-                                        val selector = CameraSelector.Builder()
-                                            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                                            .build()
 
-                                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                                        val onBarcodeScanned: (String) -> Unit = { result ->
+                                            if (!isProcessing) {
+                                                barcode = result
+                                                isProcessing = true
+                                                showBarcodeDetectedLine = true
+                                                viewModel.getProductByBarcode(result)
+                                            }
+                                        }
 
                                         val imageAnalysis = ImageAnalysis.Builder()
                                             .setTargetResolution(Size(640, 480))
                                             .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
                                             .build()
+                                        imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner(onBarcodeScanned))
 
-                                        imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner { result ->
-                                            if (result.all { it.isDigit() } && barcode.isEmpty()) {
-                                                barcode = result
-                                                showBarcodeDetectedLine = true
-                                                try {
-                                                    cameraProviderFuture.get().unbindAll()
-                                                } catch (_: Exception) { }
-                                                viewModel.getProductByBarcode(result)
-                                            }
-                                        })
+                                        val preview = Preview.Builder().build()
+                                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                                        val selector = CameraSelector.Builder()
+                                            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                                            .build()
 
-                                        try {
-                                            cameraProviderFuture.get().bindToLifecycle(
-                                                lifecycleOwner, selector, preview, imageAnalysis
-                                            )
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
+                                        cameraProviderFuture.get().bindToLifecycle(
+                                            lifecycleOwner, selector, preview, imageAnalysis
+                                        )
+
                                         previewView
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 )
 
-                                if (showBarcodeDetectedLine) {
+                                if (isProcessing) {
                                     val infiniteTransition = rememberInfiniteTransition(label = "scanner_line")
                                     val yOffset by infiniteTransition.animateFloat(
                                         initialValue = -20.dp.value,
@@ -183,58 +196,63 @@ class ScannerActivity : ComponentActivity() {
                                     )
 
                                     LaunchedEffect(Unit) {
-                                        // Mengurangi delay agar lebih responsif
                                         delay(300)
                                         showBarcodeDetectedLine = false
                                         isLoading = true
                                     }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 40.dp)
-                                            .offset(y = yOffset.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
+                                    if(showBarcodeDetectedLine) {
                                         Box(
                                             modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(2.dp)
-                                                .background(Color.Green)
-                                        )
+                                                .fillMaxSize()
+                                                .padding(horizontal = 40.dp)
+                                                .offset(y = yOffset.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(2.dp)
+                                                    .background(Color.Green)
+                                            )
+                                        }
                                     }
                                 }
+                            }
 
-                                val apiResult by viewModel.result.collectAsState(initial = Result.Loading)
+                            val apiResult by viewModel.result.collectAsState(initial = Result.Loading)
 
-                                LaunchedEffect(apiResult) {
-                                    when (apiResult) {
-                                        is Result.Success -> {
-                                            isLoading = false
-                                            if (barcode.isNotEmpty()) {
-                                                navController.navigate(Screen.Detail.createRoute(barcode))
-                                            }
+                            LaunchedEffect(apiResult) {
+                                when (apiResult) {
+                                    is Result.Success -> {
+                                        isLoading = false
+                                        isProcessing = false
+                                        if (barcode.isNotEmpty()) {
+                                            navController.navigate(Screen.Detail.createRoute(barcode))
                                         }
-                                        is Result.Error -> {
-                                            isLoading = false
-                                            val err = (apiResult as Result.Error).error
-                                            Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
-                                        }
-                                        else -> {}
                                     }
+                                    is Result.Error -> {
+                                        isLoading = false
+                                        val err = (apiResult as Result.Error).error
+                                        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+
+                                        delay(300)
+                                        isProcessing = false
+                                        barcode = ""
+                                    }
+                                    else -> {}
                                 }
+                            }
 
-                                if (isLoading) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color(0x88000000)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color(0x88000000)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         }
@@ -245,7 +263,10 @@ class ScannerActivity : ComponentActivity() {
                         arguments = listOf(navArgument("barcode") { type = NavType.StringType })
                     ) {
                         val barcodeArg = it.arguments?.getString("barcode") ?: ""
-                        DetailScreen(barcode = barcodeArg)
+                        DetailScreen(
+                            barcode = barcodeArg,
+                            onBackClick = { navController.navigateUp() }
+                        )
                     }
                 }
             }

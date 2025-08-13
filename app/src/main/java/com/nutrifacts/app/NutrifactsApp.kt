@@ -125,8 +125,11 @@ fun NutrifactsApp(
                 route = Screen.Detail.route,
                 arguments = listOf(navArgument("barcode") { type = NavType.StringType })
             ) {
-                val barcode = it.arguments?.getString("barcode") ?: -1L
-                DetailScreen(barcode = barcode.toString())
+                val barcode = it.arguments?.getString("barcode") ?: "" // Menggunakan string kosong sebagai default
+                DetailScreen(
+                    barcode = barcode,
+                    onBackClick = { navController.navigateUp() } // <-- Perbaikan ada di sini
+                )
             }
             composable(Screen.Account.route) {
                 AccountScreen()

@@ -35,12 +35,14 @@ import com.nutrifacts.app.di.Injection
 import com.nutrifacts.app.ui.components.LinearLoading
 import com.nutrifacts.app.ui.components.SmallCard
 import com.nutrifacts.app.ui.factory.ProductViewModelFactory
+import com.nutrifacts.app.data.model.ProductModel
+import androidx.lifecycle.viewmodel.compose.viewModel // Pastikan import ini ada
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     modifier: Modifier = Modifier,
-    viewModel: SearchViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+    viewModel: SearchViewModel = viewModel( // Perbaikan: Langsung panggil viewModel()
         factory = ProductViewModelFactory(Injection.provideProductRepository(LocalContext.current))
     ),
     navigateToDetail: (String) -> Unit
@@ -50,7 +52,7 @@ fun SearchScreen(
         mutableStateOf(false)
     }
     val query by viewModel.query
-    val product by viewModel.result.collectAsState(initial = Result.Loading) // Deklarasi `product` di sini
+    val product by viewModel.result.collectAsState(initial = Result.Loading)
 
     Box(
         modifier = modifier
@@ -67,14 +69,13 @@ fun SearchScreen(
                     onQueryChange = viewModel::searchProducts,
                 )
             }
-            when (product) {
+            when (val productResult = product) {
                 is Result.Loading -> {
                     loading = true
                 }
-
                 is Result.Success -> {
                     loading = false
-                    val productData = (product as Result.Success).data
+                    val productData = productResult.data
                     if (productData.isEmpty()) {
                         item {
                             Text(
@@ -86,12 +87,12 @@ fun SearchScreen(
                             )
                         }
                     } else {
-                        items(items = productData, key = { it.id!! }) { data ->
+                        items(items = productData, key = { it.id.toString() }) { data ->
                             SmallCard(
-                                barcode = data.barcode.toString(),
-                                name = data.name.toString(),
-                                company = data.company.toString(),
-                                photoUrl = data.photoUrl.toString(),
+                                barcode = data.barcode,
+                                name = data.name,
+                                company = data.company,
+                                photoUrl = data.photoUrl,
                                 navigateToDetail = navigateToDetail
                             )
                         }
@@ -102,7 +103,7 @@ fun SearchScreen(
                     loading = false
                     item {
                         Text(
-                            text = "Terjadi kesalahan: ${(product as Result.Error).error}",
+                            text = "Terjadi kesalahan: ${productResult.error}",
                             textAlign = TextAlign.Center,
                             modifier = modifier
                                 .fillMaxWidth()

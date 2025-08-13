@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nutrifacts.app.data.Result
 import com.nutrifacts.app.data.repository.ProductRepository
-import com.nutrifacts.app.data.response.ProductItem
+import com.nutrifacts.app.data.model.ProductModel // Import ProductModel yang benar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -16,9 +16,9 @@ class SearchViewModel(private val repository: ProductRepository) : ViewModel() {
     private val _query = mutableStateOf("")
     val query: State<String> get() = _query
 
-    private val _result: MutableStateFlow<Result<List<ProductItem>>> =
+    private val _result: MutableStateFlow<Result<List<ProductModel>>> = // Perbaikan tipe data di sini
         MutableStateFlow(Result.Loading)
-    val result: StateFlow<Result<List<ProductItem>>> get() = _result
+    val result: StateFlow<Result<List<ProductModel>>> get() = _result // Perbaikan tipe data di sini
 
     fun searchProducts(newQuery: String) {
         _query.value = newQuery
