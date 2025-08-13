@@ -17,6 +17,7 @@ import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavType
@@ -43,6 +45,7 @@ import com.nutrifacts.app.ui.navigation.Screen
 import com.nutrifacts.app.ui.screen.detail.DetailScreen
 import com.nutrifacts.app.ui.screen.scanner.ui.theme.NutrifactsTheme
 import java.util.concurrent.Executors
+import kotlinx.coroutines.delay
 
 class ScannerActivity : ComponentActivity() {
 
@@ -50,13 +53,11 @@ class ScannerActivity : ComponentActivity() {
         ProductViewModelFactory.getInstance(this)
     }
 
-    // State izin kamera agar bisa diubah di onResume
     private var _hasPermission = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Cek awal izin kamera
         _hasPermission.value = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
@@ -65,7 +66,7 @@ class ScannerActivity : ComponentActivity() {
         setContent {
             NutrifactsTheme {
                 val navController = rememberNavController()
-                var hasPermission by _hasPermission
+                val hasPermission by _hasPermission
                 var showPermissionDialog by remember { mutableStateOf(!hasPermission) }
                 var toastShown by remember { mutableStateOf(false) }
 
@@ -77,8 +78,8 @@ class ScannerActivity : ComponentActivity() {
                         val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
                         var barcode by remember { mutableStateOf("") }
                         var isLoading by remember { mutableStateOf(false) }
+                        var showBarcodeDetectedLine by remember { mutableStateOf(false) }
 
-                        // Tampilkan dialog jika izin belum diberikan
                         if (showPermissionDialog && !hasPermission) {
                             AlertDialog(
                                 onDismissRequest = { finish() },
@@ -112,16 +113,14 @@ class ScannerActivity : ComponentActivity() {
                                     }
                                 },
                                 dismissButton = {
-                                    TextButton(onClick = { finish() }) {
+                                    Button(onClick = { finish() }) {
                                         Text("Batal")
                                     }
                                 }
                             )
                         }
 
-                        // Jika izin kamera sudah ada
                         if (hasPermission) {
-                            // Tampilkan toast landscape hanya sekali
                             LaunchedEffect(Unit) {
                                 if (!toastShown) {
                                     Toast.makeText(
@@ -134,68 +133,97 @@ class ScannerActivity : ComponentActivity() {
                             }
 
                             Box(modifier = Modifier.fillMaxSize()) {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    AndroidView(
-                                        factory = { ctx ->
-                                            val previewView = PreviewView(ctx)
-                                            val preview = Preview.Builder().build()
-                                            val selector = CameraSelector.Builder()
-                                                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                                                .build()
+                                AndroidView(
+                                    factory = { ctx ->
+                                        val previewView = PreviewView(ctx)
+                                        val preview = Preview.Builder().build()
+                                        val selector = CameraSelector.Builder()
+                                            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                                            .build()
 
-                                            preview.setSurfaceProvider(previewView.surfaceProvider)
+                                        preview.setSurfaceProvider(previewView.surfaceProvider)
 
-                                            val imageAnalysis = ImageAnalysis.Builder()
-                                                .setTargetResolution(Size(640, 480))
-                                                .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
-                                                .build()
+                                        val imageAnalysis = ImageAnalysis.Builder()
+                                            .setTargetResolution(Size(640, 480))
+                                            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
+                                            .build()
 
-                                            imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner { result ->
-                                                if (result.all { it.isDigit() } && barcode.isEmpty()) {
-                                                    barcode = result
-                                                    isLoading = true
-                                                    try {
-                                                        cameraProviderFuture.get().unbindAll()
-                                                    } catch (_: Exception) { }
-                                                    viewModel.getProductByBarcode(result)
-                                                }
-                                            })
-
-                                            try {
-                                                cameraProviderFuture.get().bindToLifecycle(
-                                                    lifecycleOwner, selector, preview, imageAnalysis
-                                                )
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
+                                        imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner { result ->
+                                            if (result.all { it.isDigit() } && barcode.isEmpty()) {
+                                                barcode = result
+                                                showBarcodeDetectedLine = true
+                                                try {
+                                                    cameraProviderFuture.get().unbindAll()
+                                                } catch (_: Exception) { }
+                                                viewModel.getProductByBarcode(result)
                                             }
-                                            previewView
-                                        },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxSize()
+                                        })
+
+                                        try {
+                                            cameraProviderFuture.get().bindToLifecycle(
+                                                lifecycleOwner, selector, preview, imageAnalysis
+                                            )
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                        previewView
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                if (showBarcodeDetectedLine) {
+                                    val infiniteTransition = rememberInfiniteTransition(label = "scanner_line")
+                                    val yOffset by infiniteTransition.animateFloat(
+                                        initialValue = -20.dp.value,
+                                        targetValue = 20.dp.value,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(durationMillis = 500, easing = FastOutLinearInEasing),
+                                            repeatMode = RepeatMode.Reverse
+                                        ), label = "scanner_y_offset"
                                     )
 
-                                    val apiResult by viewModel.result.collectAsState(initial = Result.Loading)
+                                    LaunchedEffect(Unit) {
+                                        // Mengurangi delay agar lebih responsif
+                                        delay(300)
+                                        showBarcodeDetectedLine = false
+                                        isLoading = true
+                                    }
 
-                                    LaunchedEffect(apiResult) {
-                                        when (apiResult) {
-                                            is Result.Success -> {
-                                                isLoading = false
-                                                if (barcode.isNotEmpty()) {
-                                                    navController.navigate(Screen.Detail.createRoute(barcode))
-                                                }
-                                            }
-                                            is Result.Error -> {
-                                                isLoading = false
-                                                val err = (apiResult as Result.Error).error
-                                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
-                                            }
-                                            else -> {}
-                                        }
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 40.dp)
+                                            .offset(y = yOffset.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(2.dp)
+                                                .background(Color.Green)
+                                        )
                                     }
                                 }
 
-                                // Overlay loading
+                                val apiResult by viewModel.result.collectAsState(initial = Result.Loading)
+
+                                LaunchedEffect(apiResult) {
+                                    when (apiResult) {
+                                        is Result.Success -> {
+                                            isLoading = false
+                                            if (barcode.isNotEmpty()) {
+                                                navController.navigate(Screen.Detail.createRoute(barcode))
+                                            }
+                                        }
+                                        is Result.Error -> {
+                                            isLoading = false
+                                            val err = (apiResult as Result.Error).error
+                                            Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                        }
+                                        else -> {}
+                                    }
+                                }
+
                                 if (isLoading) {
                                     Box(
                                         modifier = Modifier
@@ -226,13 +254,12 @@ class ScannerActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Cek ulang izin kamera saat kembali dari pengaturan
         val granted = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
         if (granted && !_hasPermission.value) {
-            _hasPermission.value = true // Langsung aktifkan mode kamera
+            _hasPermission.value = true
         }
     }
 }

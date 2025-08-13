@@ -13,14 +13,19 @@ import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.nutrifacts.app.data.Result
@@ -28,6 +33,7 @@ import com.nutrifacts.app.di.Injection
 import com.nutrifacts.app.ui.factory.ProductViewModelFactory
 import com.nutrifacts.app.ui.navigation.Screen
 import java.util.concurrent.Executors
+import kotlinx.coroutines.delay
 
 private val CAMERAX_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 
@@ -40,7 +46,6 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val barcode = remember { mutableStateOf("") }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
@@ -51,6 +56,10 @@ fun ScannerScreen(
             if (!granted) navController.navigateUp() else hasPermission = true
         }
     )
+
+    var barcode by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var showBarcodeDetectedLine by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!hasPermission) {
@@ -69,7 +78,7 @@ fun ScannerScreen(
         onBackPressedCallback.value.handleOnBackPressed()
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         if (hasPermission) {
             AndroidView(
                 factory = { ctx ->
@@ -87,9 +96,11 @@ fun ScannerScreen(
                         .build()
 
                     imageAnalysis.setAnalyzer(cameraExecutor, BarcodeScanner { result ->
-                        if (result.all { it.isDigit() } && barcode.value.isEmpty()) {
-                            barcode.value = result
+                        if (result.all { it.isDigit() } && barcode.isEmpty()) {
+                            barcode = result
+                            showBarcodeDetectedLine = true
                             cameraProviderFuture.get().unbindAll()
+                            viewModel.getProductByBarcode(result)
                         }
                     })
 
@@ -99,28 +110,71 @@ fun ScannerScreen(
 
                     previewView
                 },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize()
+                modifier = Modifier.fillMaxSize()
             )
 
-            LaunchedEffect(barcode.value) {
-                if (barcode.value.isNotEmpty()) {
-                    viewModel.getProductByBarcode(barcode.value)
+            if (showBarcodeDetectedLine) {
+                val infiniteTransition = rememberInfiniteTransition(label = "scanner_line")
+                val yOffset by infiniteTransition.animateFloat(
+                    initialValue = -20.dp.value,
+                    targetValue = 20.dp.value,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 500, easing = FastOutLinearInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ), label = "scanner_y_offset"
+                )
+
+                LaunchedEffect(Unit) {
+                    // Mengurangi delay agar lebih responsif
+                    delay(300)
+                    showBarcodeDetectedLine = false
+                    isLoading = true
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 40.dp)
+                        .offset(y = yOffset.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(Color.Green)
+                    )
                 }
             }
 
-            LaunchedEffect(Unit) {
-                viewModel.result.collect { result ->
-                    when (result) {
-                        is Result.Success -> {
-                            navController.navigate(Screen.Detail.createRoute(barcode.value))
+            val apiResult by viewModel.result.collectAsState(initial = Result.Loading)
+
+            LaunchedEffect(apiResult) {
+                when (apiResult) {
+                    is Result.Success -> {
+                        isLoading = false
+                        if (barcode.isNotEmpty()) {
+                            navController.navigate(Screen.Detail.createRoute(barcode))
                         }
-                        is Result.Error -> {
-                            // Bisa tambahkan Toast error di sini kalau mau
-                        }
-                        else -> {}
                     }
+                    is Result.Error -> {
+                        isLoading = false
+                        // Handle error
+                    }
+                    else -> {}
+                }
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0x88000000)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

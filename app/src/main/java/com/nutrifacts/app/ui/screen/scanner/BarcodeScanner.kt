@@ -17,7 +17,6 @@ class BarcodeScanner(
         ImageFormat.YUV_444_888
     )
 
-    // Gunakan 1 instance reader supaya lebih cepat
     private val reader: MultiFormatReader = MultiFormatReader().apply {
         setHints(
             mapOf(
