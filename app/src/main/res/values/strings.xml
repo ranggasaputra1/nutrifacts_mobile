@@ -62,7 +62,7 @@
 
 
     <string name="akg_title">Angka Kecukupan Gizi (AKG) Harian:</string>
-    <string name="akg_anak_anak_desc">Anak-anak (7-9 tahun): Kalori ~1650 kkal, Protein ~49g, Lemak ~61g, Karbohidrat ~254g.</string>
+    <string name="akg_anak_anak_desc">Anak-anak (kurang dari 10tahun): Kalori ~1650 kkal, Protein ~49g, Lemak ~61g, Karbohidrat ~254g.</string>
     <string name="akg_remaja_desc">Remaja (16-18 tahun pria): Kalori ~2675 kkal, Protein ~72g, Lemak ~85g, Karbohidrat ~407g.</string>
     <string name="akg_dewasa_desc">Dewasa (19-29 tahun pria): Kalori ~2650 kkal, Protein ~65g, Lemak ~75g, Karbohidrat ~369g.</string>
     <string name="akg_lansia_desc">Lansia (65-80 tahun pria): Kalori ~1800 kkal, Protein ~64g, Lemak ~52g, Karbohidrat ~250g.</string>
