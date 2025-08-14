@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -15,10 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nutrifacts.app.R
@@ -65,6 +71,24 @@ fun DetailScreen(
         }
     }
 
+    // ✅ Optimasi: Panggil stringResource() di luar blok remember
+    val caloriesLabel = stringResource(id = R.string.calories)
+    val totalFatLabel = stringResource(id = R.string.total_fat)
+    val satFatLabel = stringResource(id = R.string.sat_fat)
+    val transFatLabel = stringResource(id = R.string.trans_fat)
+    val cholesterolLabel = stringResource(id = R.string.cholesterol)
+    val sodiumLabel = stringResource(id = R.string.sodium)
+    val carbohydrateLabel = stringResource(id = R.string.carbohydrate)
+    val fiberLabel = stringResource(id = R.string.fiber)
+    val sugarLabel = stringResource(id = R.string.sugar)
+    val proteinLabel = stringResource(id = R.string.protein)
+    val vitaminALabel = stringResource(id = R.string.vitamin_a)
+    val vitaminCLabel = stringResource(id = R.string.vitamin_c)
+    val vitaminDLabel = stringResource(id = R.string.vitamin_d)
+    val calciumLabel = stringResource(id = R.string.calcium)
+    val ironLabel = stringResource(id = R.string.iron)
+
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -79,6 +103,27 @@ fun DetailScreen(
             is Result.Success -> {
                 loading = false
                 val productData = resultState.data
+
+                // ✅ Optimasi: Menggunakan 'remember' dengan nilai string yang sudah ada
+                val formattedNutrientData by remember(productData) {
+                    mutableStateOf(mapOf(
+                        caloriesLabel to formatNutrientValue(productData.calories, "kkal"),
+                        totalFatLabel to formatNutrientValue(productData.fat, "g"),
+                        satFatLabel to formatNutrientValue(productData.saturatedFat, "g"),
+                        transFatLabel to formatNutrientValue(productData.transFat, "g"),
+                        cholesterolLabel to formatNutrientValue(productData.cholesterol, "mg"),
+                        sodiumLabel to formatNutrientValue(productData.sodium, "mg"),
+                        carbohydrateLabel to formatNutrientValue(productData.carbohydrate, "g"),
+                        fiberLabel to formatNutrientValue(productData.dietaryFiber, "g"),
+                        sugarLabel to formatNutrientValue(productData.sugar, "g"),
+                        proteinLabel to formatNutrientValue(productData.proteins, "g"),
+                        vitaminALabel to productData.vitaminA,
+                        vitaminCLabel to productData.vitaminC,
+                        vitaminDLabel to productData.vitaminD,
+                        calciumLabel to productData.calcium,
+                        ironLabel to productData.iron
+                    ))
+                }
 
                 LaunchedEffect(key1 = barcode) {
                     viewModel.insertHistory(
@@ -159,7 +204,6 @@ fun DetailScreen(
                                     modifier = Modifier.weight(1f)
                                 )
 
-                                // Logika untuk menampilkan status halal
                                 when {
                                     productData.labelHalal.equals("Halal", ignoreCase = true) -> {
                                         Icon(
@@ -231,21 +275,10 @@ fun DetailScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             Divider(color = MaterialTheme.colorScheme.outlineVariant)
-                            NutritionData(label = stringResource(id = R.string.calories), value = productData.calories)
-                            NutritionData(label = stringResource(id = R.string.total_fat), value = productData.fat)
-                            NutritionData(label = stringResource(id = R.string.sat_fat), value = productData.saturatedFat)
-                            NutritionData(label = stringResource(id = R.string.trans_fat), value = productData.transFat)
-                            NutritionData(label = stringResource(id = R.string.cholesterol), value = productData.cholesterol)
-                            NutritionData(label = stringResource(id = R.string.sodium), value = productData.sodium)
-                            NutritionData(label = stringResource(id = R.string.carbohydrate), value = productData.carbohydrate)
-                            NutritionData(label = stringResource(id = R.string.fiber), value = productData.dietaryFiber)
-                            NutritionData(label = stringResource(id = R.string.sugar), value = productData.sugar)
-                            NutritionData(label = stringResource(id = R.string.protein), value = productData.proteins)
-                            NutritionData(label = stringResource(id = R.string.vitamin_a), value = productData.vitaminA)
-                            NutritionData(label = stringResource(id = R.string.vitamin_c), value = productData.vitaminC)
-                            NutritionData(label = stringResource(id = R.string.vitamin_d), value = productData.vitaminD)
-                            NutritionData(label = stringResource(id = R.string.calcium), value = productData.calcium)
-                            NutritionData(label = stringResource(id = R.string.iron), value = productData.iron)
+
+                            formattedNutrientData.forEach { (label, value) ->
+                                NutritionData(label = label, value = value)
+                            }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
@@ -309,6 +342,15 @@ fun DetailScreen(
     }
 }
 
+fun formatNutrientValue(value: String, defaultUnit: String): String {
+    val hasUnit = value.any { it.isLetter() }
+    return if (hasUnit) {
+        value
+    } else {
+        "$value $defaultUnit"
+    }
+}
+
 @Composable
 fun DetailContentSection(productData: ProductModel) {
     var showNutrilevel by remember { mutableStateOf(false) }
@@ -319,6 +361,7 @@ fun DetailContentSection(productData: ProductModel) {
     if (showNutrilevelDialog) {
         NutrilevelDialog(
             level = productData.nutritionLevel,
+            productData = productData,
             onDismiss = { showNutrilevelDialog = false }
         )
     }
@@ -375,21 +418,84 @@ fun DetailContentSection(productData: ProductModel) {
 }
 
 @Composable
-fun NutrilevelDialog(level: String, onDismiss: () -> Unit) {
+fun NutrilevelDialog(level: String, productData: ProductModel, onDismiss: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+
+    val akgCategories = listOf(
+        R.string.akg_anak_anak_desc,
+        R.string.akg_remaja_desc,
+        R.string.akg_dewasa_desc,
+        R.string.akg_lansia_desc
+    )
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "Informasi Nutrilevel: $level", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Informasi Nutrilevel: $level",
+                style = MaterialTheme.typography.titleMedium
+            )
         },
         text = {
-            val description = when (level) {
-                "A" -> stringResource(id = R.string.nutrilevel_a_desc)
-                "B" -> stringResource(id = R.string.nutrilevel_b_desc)
-                "C" -> stringResource(id = R.string.nutrilevel_c_desc)
-                "D" -> stringResource(id = R.string.nutrilevel_d_desc)
-                else -> stringResource(id = R.string.nutrilevel_unknown_desc)
+            val descriptionResId = when (level) {
+                "A" -> R.string.nutrilevel_a_desc
+                "B" -> R.string.nutrilevel_b_desc
+                "C" -> R.string.nutrilevel_c_desc
+                "D" -> R.string.nutrilevel_d_desc
+                else -> R.string.nutrilevel_unknown_desc
             }
-            Text(text = description)
+
+            Column {
+                Text(
+                    text = stringResource(id = descriptionResId),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(id = R.string.akg_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Column {
+                    akgCategories.forEach { resId ->
+                        Text(
+                            text = stringResource(id = resId),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val annotatedString = buildAnnotatedString {
+                    append(stringResource(id = R.string.nutrilevel_source))
+                    pushStringAnnotation(
+                        tag = "URL",
+                        annotation = "https://peraturan.bpk.go.id/Details/138621/permenkes-no-28-tahun-2019"
+                    )
+                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
+                        append(stringResource(id = R.string.permenkes_akg_title))
+                    }
+                    pop()
+                }
+
+                ClickableText(
+                    text = annotatedString,
+                    onClick = { offset ->
+                        annotatedString.getStringAnnotations(
+                            tag = "URL",
+                            start = offset,
+                            end = offset
+                        ).firstOrNull()?.let {
+                            uriHandler.openUri(it.item)
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                )
+            }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
