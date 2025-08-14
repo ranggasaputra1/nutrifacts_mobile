@@ -35,14 +35,13 @@ import com.nutrifacts.app.di.Injection
 import com.nutrifacts.app.ui.components.LinearLoading
 import com.nutrifacts.app.ui.components.SmallCard
 import com.nutrifacts.app.ui.factory.ProductViewModelFactory
-import com.nutrifacts.app.data.model.ProductModel
-import androidx.lifecycle.viewmodel.compose.viewModel // Pastikan import ini ada
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     modifier: Modifier = Modifier,
-    viewModel: SearchViewModel = viewModel( // Perbaikan: Langsung panggil viewModel()
+    viewModel: SearchViewModel = viewModel(
         factory = ProductViewModelFactory(Injection.provideProductRepository(LocalContext.current))
     ),
     navigateToDetail: (String) -> Unit

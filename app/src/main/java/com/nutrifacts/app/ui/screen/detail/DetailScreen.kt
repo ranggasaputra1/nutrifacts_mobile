@@ -65,201 +65,247 @@ fun DetailScreen(
         }
     }
 
-    Scaffold { paddingValues ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (val resultState = productResult) {
-                is Result.Loading -> {
-                    loading = true
-                    viewModel.getProductByBarcode(barcode)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        when (val resultState = productResult) {
+            is Result.Loading -> {
+                loading = true
+                viewModel.getProductByBarcode(barcode)
+            }
+
+            is Result.Success -> {
+                loading = false
+                val productData = resultState.data
+
+                LaunchedEffect(key1 = barcode) {
+                    viewModel.insertHistory(
+                        History(
+                            name = productData.name,
+                            company = productData.company,
+                            photoUrl = productData.photoUrl,
+                            barcode = productData.barcode,
+                            user_id = user.id,
+                            dateAdded = formattedDate
+                        )
+                    )
                 }
 
-                is Result.Success -> {
-                    loading = false
-                    val productData = resultState.data
-
-                    LaunchedEffect(key1 = barcode) {
-                        viewModel.insertHistory(
-                            History(
-                                name = productData.name,
-                                company = productData.company,
-                                photoUrl = productData.photoUrl,
-                                barcode = productData.barcode,
-                                user_id = user.id,
-                                dateAdded = formattedDate
-                            )
-                        )
+                when (val savedState = savedProductResult) {
+                    is Result.Success -> {
+                        val savedProductData = savedState.data
+                        val foundSavedProduct = savedProductData.find { it.barcode == productData.barcode }
+                        isSaved = foundSavedProduct != null
+                        thisSavedProductId = foundSavedProduct?.id ?: 0
                     }
-
-                    when (val savedState = savedProductResult) {
-                        is Result.Success -> {
-                            val savedProductData = savedState.data
-                            val foundSavedProduct = savedProductData.find { it.barcode == productData.barcode }
-                            isSaved = foundSavedProduct != null
-                            thisSavedProductId = foundSavedProduct?.id ?: 0
-                        }
-                        is Result.Error -> {
-                            Toast.makeText(context, savedState.error, Toast.LENGTH_SHORT).show()
-                        }
-                        else -> {}
+                    is Result.Error -> {
+                        Toast.makeText(context, savedState.error, Toast.LENGTH_SHORT).show()
                     }
+                    else -> {}
+                }
 
-                    Column(
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
+                            .fillMaxWidth()
+                            .height(280.dp)
                     ) {
                         AsyncImage(
                             model = productData.photoUrl,
                             contentDescription = stringResource(id = R.string.product_img),
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(280.dp)
+                            modifier = Modifier.fillMaxSize()
                         )
-
-                        Card(
+                        IconButton(
+                            onClick = onBackClick,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .offset(y = (-32).dp)
-                                .padding(horizontal = 16.dp),
-                            shape = MaterialTheme.shapes.large,
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                                .align(Alignment.TopStart)
+                                .padding(16.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = productData.name,
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (user.id != 0) {
-                                        if (isSaved) {
-                                            IconButton(onClick = {
-                                                viewModel.deleteSavedProduct(thisSavedProductId)
-                                                isSaved = false
-                                                Toast.makeText(context, "Produk Dihapus dari Produk Tersimpan", Toast.LENGTH_SHORT).show()
-                                            }) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.baseline_bookmark_24),
-                                                    contentDescription = stringResource(id = R.string.save),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        } else {
-                                            IconButton(onClick = {
-                                                viewModel.saveProduct(productData.name, productData.company, productData.photoUrl, productData.barcode, user.id)
-                                                isSaved = true
-                                                Toast.makeText(context, "Produk Disimpan", Toast.LENGTH_SHORT).show()
-                                            }) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.baseline_bookmark_border_24),
-                                                    contentDescription = stringResource(id = R.string.save)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                // Data Nutrisi
-                                Text(
-                                    text = stringResource(id = R.string.nutrition_facts),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                                Divider(color = MaterialTheme.colorScheme.outlineVariant)
-                                NutritionData(label = stringResource(id = R.string.calories), value = productData.calories)
-                                NutritionData(label = stringResource(id = R.string.total_fat), value = productData.fat)
-                                NutritionData(label = stringResource(id = R.string.sat_fat), value = productData.saturatedFat)
-                                NutritionData(label = stringResource(id = R.string.trans_fat), value = productData.transFat)
-                                NutritionData(label = stringResource(id = R.string.cholesterol), value = productData.cholesterol)
-                                NutritionData(label = stringResource(id = R.string.sodium), value = productData.sodium)
-                                NutritionData(label = stringResource(id = R.string.carbohydrate), value = productData.carbohydrate)
-                                NutritionData(label = stringResource(id = R.string.fiber), value = productData.dietaryFiber)
-                                NutritionData(label = stringResource(id = R.string.sugar), value = productData.sugar)
-                                NutritionData(label = stringResource(id = R.string.protein), value = productData.proteins)
-                                NutritionData(label = stringResource(id = R.string.vitamin_a), value = productData.vitaminA)
-                                NutritionData(label = stringResource(id = R.string.vitamin_c), value = productData.vitaminC)
-                                NutritionData(label = stringResource(id = R.string.vitamin_d), value = productData.vitaminD)
-                                NutritionData(label = stringResource(id = R.string.calcium), value = productData.calcium)
-                                NutritionData(label = stringResource(id = R.string.iron), value = productData.iron)
-
-                                Spacer(modifier = Modifier.height(24.dp))
-
-                                // Bagian Nutrilevel dipindahkan ke sini
-                                DetailContentSection(productData)
-                            }
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = stringResource(R.string.back),
+                                tint = Color.White
+                            )
                         }
+                    }
 
-                        // Informasi Tambahan
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-32).dp)
+                            .padding(horizontal = 16.dp),
+                        shape = MaterialTheme.shapes.large,
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(24.dp)
                         ) {
-                            if (productData.information.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    text = "Informasi Produk",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    text = productData.name,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = productData.information,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Justify
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Logika untuk menampilkan status halal
+                                when {
+                                    productData.labelHalal.equals("Halal", ignoreCase = true) -> {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_halal_logo),
+                                            contentDescription = "Logo Halal",
+                                            tint = Color.Unspecified,
+                                            modifier = Modifier
+                                                .size(70.dp)
+                                                .padding(start = 8.dp)
+                                        )
+                                    }
+                                    productData.labelHalal.equals("Non-Halal", ignoreCase = true) -> {
+                                        Text(
+                                            text = "Non-Halal",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    productData.labelHalal.isBlank() -> {
+                                        Text(
+                                            text = "Belum ditemukan data sertifikasi produk.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                if (user.id != 0) {
+                                    if (isSaved) {
+                                        IconButton(onClick = {
+                                            viewModel.deleteSavedProduct(thisSavedProductId)
+                                            isSaved = false
+                                            Toast.makeText(context, "Produk Dihapus dari Produk Tersimpan", Toast.LENGTH_SHORT).show()
+                                        }) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.baseline_bookmark_24),
+                                                contentDescription = stringResource(id = R.string.save),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    } else {
+                                        IconButton(onClick = {
+                                            viewModel.saveProduct(productData.name, productData.company, productData.photoUrl, productData.barcode, user.id)
+                                            isSaved = true
+                                            Toast.makeText(context, "Produk Disimpan", Toast.LENGTH_SHORT).show()
+                                        }) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.baseline_bookmark_border_24),
+                                                contentDescription = stringResource(id = R.string.save)
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                            if (productData.keterangan.isNotEmpty()) {
-                                Text(
-                                    text = "Keterangan Nutrisi",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = productData.keterangan,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Justify
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
+
                             Text(
                                 text = "Product by ${productData.company}",
-                                style = MaterialTheme.typography.labelSmall,
-                                textAlign = TextAlign.Right,
-                                modifier = Modifier.fillMaxWidth()
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
                             )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = stringResource(id = R.string.nutrition_facts),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                            NutritionData(label = stringResource(id = R.string.calories), value = productData.calories)
+                            NutritionData(label = stringResource(id = R.string.total_fat), value = productData.fat)
+                            NutritionData(label = stringResource(id = R.string.sat_fat), value = productData.saturatedFat)
+                            NutritionData(label = stringResource(id = R.string.trans_fat), value = productData.transFat)
+                            NutritionData(label = stringResource(id = R.string.cholesterol), value = productData.cholesterol)
+                            NutritionData(label = stringResource(id = R.string.sodium), value = productData.sodium)
+                            NutritionData(label = stringResource(id = R.string.carbohydrate), value = productData.carbohydrate)
+                            NutritionData(label = stringResource(id = R.string.fiber), value = productData.dietaryFiber)
+                            NutritionData(label = stringResource(id = R.string.sugar), value = productData.sugar)
+                            NutritionData(label = stringResource(id = R.string.protein), value = productData.proteins)
+                            NutritionData(label = stringResource(id = R.string.vitamin_a), value = productData.vitaminA)
+                            NutritionData(label = stringResource(id = R.string.vitamin_c), value = productData.vitaminC)
+                            NutritionData(label = stringResource(id = R.string.vitamin_d), value = productData.vitaminD)
+                            NutritionData(label = stringResource(id = R.string.calcium), value = productData.calcium)
+                            NutritionData(label = stringResource(id = R.string.iron), value = productData.iron)
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            DetailContentSection(productData)
                         }
                     }
-                }
 
-                is Result.Error -> {
-                    loading = false
-                    Toast.makeText(context, (productResult as Result.Error).error, Toast.LENGTH_SHORT).show()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                    ) {
+                        if (productData.information.isNotEmpty()) {
+                            Text(
+                                text = "Informasi Produk",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = productData.information,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Justify
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        if (productData.keterangan.isNotEmpty()) {
+                            Text(
+                                text = "Keterangan Nutrisi",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = productData.keterangan,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Justify
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        Text(
+                            text = "Product by ${productData.company}",
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Right,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
-            LinearLoading(
-                isLoading = loading,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+
+            is Result.Error -> {
+                loading = false
+                Toast.makeText(context, (resultState as Result.Error).error, Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
         }
+        LinearLoading(
+            isLoading = loading,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
